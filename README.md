@@ -1,0 +1,2 @@
+# CocosAirplaneGame
+自己学习cocos时跟教程做的小飞机游戏
