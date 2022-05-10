@@ -1,5 +1,5 @@
 
-import { _decorator, Component, Node, Prefab, instantiate, math } from 'cc';
+import { _decorator, Component, Node, Prefab, instantiate, math, Vec3 } from 'cc';
 import { Bullet } from '../bullet/Bullet';
 import { EnemyPlane } from '../plane/EnemyPlane';
 import { Constant } from './Constant';
@@ -76,23 +76,48 @@ export class GameManager extends Component {
             this._currentShootTime = 0;
         }
 
+        //从一开始就一直要去记录时间，根据该时间来改变飞机创建的状态
+        this._currCreateEnemyTime += deltaTime;
         //有了changePlaneMode()改变状态后，我们判断其组合方式
         if (this._combinationInterval === Constant.Combination.PLAN1) {
             //组合一：创建单一的飞机
-            this._currCreateEnemyTime += deltaTime;
             //目前飞机记录时间到了要求后，就创建飞机，然后重置时间
             if (this._currCreateEnemyTime > this.createEnemyTime) {
                 this.createEnemyPlane();
                 this._currCreateEnemyTime = 0;
             }
         } else if (this._combinationInterval === Constant.Combination.PLAN2) {
-
+            //组合间隔为0.9，plan1的组合间隔为1
+            if (this._currCreateEnemyTime > this.createEnemyTime * 0.9) {
+                //通过一个随机数，来决定是组合一还是组合2，组合2就走组合2的，否则就走组合1的逻辑
+                const randomCombination = math.randomRangeInt(1, 3);
+                if (randomCombination === Constant.Combination.PLAN2) {
+                    this.createCombination1();
+                } else {
+                    this.createEnemyPlane();
+                }
+                //将时间重置
+                this._currCreateEnemyTime = 0;
+            }
         } else {
+            if (this._currCreateEnemyTime > this.createEnemyTime * 0.8) {
+                const randomCombination = math.randomRangeInt(1, 4);
+                if (randomCombination === Constant.Combination.PLAN2) {
+                    this.createCombination1();
+                } else if (randomCombination === Constant.Combination.PLAN3) {
+                    this.createCombination2();
+                }
+                else {
+                    this.createEnemyPlane();
+                }
+                //将时间重置
+                this._currCreateEnemyTime = 0;
+            }
 
         }
     }
 
-    
+
 
     //创建子弹
     public createPlayerBullet() {
@@ -106,7 +131,17 @@ export class GameManager extends Component {
         bullet.setPosition(pos.x, pos.y, pos.z - 7);
         //设置子弹速度
         const bulletcomp = bullet.getComponent(Bullet);
-        bulletcomp.bulletspeed = this.bulletSpeed;
+        bulletcomp.show(this.bulletSpeed, false);
+    }
+
+    public createEnemyBullet(targetPos: Vec3) {
+        //实例化子弹，步骤和创建玩家子弹一样
+        const bullet = instantiate(this.bullet01);
+        bullet.setParent(this.bulletroot);
+        //子弹在飞机前方6单位的地方
+        bullet.setPosition(targetPos.x, targetPos.y, targetPos.z + 6);
+        const bulletcomp = bullet.getComponent(Bullet);
+        bulletcomp.show(1, true);//子弹的速度只要比两种敌机的飞行速度快即可
     }
 
     //敌机的创建
@@ -131,11 +166,59 @@ export class GameManager extends Component {
 
         //获取敌机的enemyPlane脚本组件，并通过show方法传给敌机它应有的速度
         const enemyComp = enemy.getComponent(EnemyPlane);
-        enemyComp.show(speed);
+        enemyComp.show(this, speed, true);//单架敌机是需要发射子弹的，所以参数为TRUE
 
         //设置飞机的位置，水平方向移动范围为-25到25，然后垂直方向在-50的位置出生
         const randomPos = math.randomRangeInt(-25, 26);
         enemy.setPosition(randomPos, 0, -50);
+    }
+
+    //组合一的函数，组合一是一字型飞入，有五架飞机
+    public createCombination1() {
+        //创建五架飞机，这里定义了一个数组，其类型为Node，其数量为5
+        const enemyArray = new Array<Node>(5);
+        for (let i = 0; i < enemyArray.length; i++) {
+            //生成敌机
+            enemyArray[i] = instantiate(this.enemy01);
+            const element = enemyArray[i];
+            //设定父物体
+            element.parent = this.node;
+            //设定位置，经过度量，每架敌机之间的间隔为10，第一架飞机初始位置x为-20，之后的飞机依次加10
+            //i从0开始算，第2、3、4、5架飞机x分别为-10、0、10、20
+            element.setPosition(-20 + i * 10, 0, -50);
+            //设置飞机的速度，这里速度二选一即可，选enemy1和2都行
+            const enemyPlaneComp = element.getComponent(EnemyPlane);
+            enemyPlaneComp.show(this, this.enemy1Speed, false);//组合不需要发射子弹为FALSE
+        }
+    }
+
+    public createCombination2() {
+        const enemyArray = new Array<Node>(7);
+
+        const combinationPos = [
+            -21, 0, -60,
+            -14, 0, -55,
+            -7, 0, -50,
+            0, 0, -45,
+            7, 0, -50,
+            14, 0, -55,
+            21, 0, -60,
+        ]
+
+        for (let i = 0; i < enemyArray.length; i++) {
+            //生成敌机
+            enemyArray[i] = instantiate(this.enemy02);
+            const element = enemyArray[i];
+            //设定父物体
+            element.parent = this.node;
+            //设定位置
+            //因为数组只有7个，但是位置有21个，因此每架飞机间位置偏移为3
+            const startIndex = i * 3;
+            element.setPosition(combinationPos[startIndex], combinationPos[startIndex + 1], combinationPos[startIndex + 2]);
+            //设置飞机的速度
+            const enemyPlaneComp = element.getComponent(EnemyPlane);
+            enemyPlaneComp.show(this, this.enemy2Speed, false);
+        }
     }
 
     //判断当前是否处于触摸的状态，只有触摸状态下才能发射子弹，这里的参数值是从UImain传过来的

@@ -13,34 +13,45 @@ const { ccclass, property } = _decorator;
  * ManualUrl = https://docs.cocos.com/creator/3.4/manual/zh/
  *
  */
-//添加一个常量，用来表示它当前移动的最大的位置范围为50
-const OUTOFRANGE = 50;
+//添加一个变量，用来表示它当前移动的最大的位置范围为50
+
 
 @ccclass('Bullet')
 export class Bullet extends Component {
     //定义一个速度属性
-    @property
-    public bulletspeed = 0;
+    private _bulletspeed = 0;
+    private _isEnemyBullet = false;
 
-
-    start () {
+    start() {
         // [3]
     }
 
-    update (deltaTime: number) {
+    update(deltaTime: number) {
         //让子弹每帧根据速度进行移动
         //先获取子弹的位置
         const pos = this.node.position;
-        //让它每帧减去子弹移动的速度
-        const moveLength = pos.z - this.bulletspeed;
-        //最后将得到的位置传给子弹节点
-        this.node.setPosition(pos.x,pos.y,moveLength);
-
-        //移动位置超出，就销毁这个节点
-        if(moveLength > OUTOFRANGE){
-            this.node.destroy();
-            console.log("destroy");
+        //如果是玩家的子弹让它每帧减去子弹移动的速度，如果是敌机的就相反
+        let moveLength = 0;//因为后面会对它进行二次赋值，所以应该是let而非const
+        if (this._isEnemyBullet) {
+            moveLength = pos.z + this._bulletspeed;
+            this.node.setPosition(pos.x, pos.y, moveLength);
+            if (moveLength > 50) {
+                this.node.destroy();
+            }
+        } else {
+            moveLength = pos.z - this._bulletspeed;
+            this.node.setPosition(pos.x, pos.y, moveLength);
+            if (moveLength < -50) {
+                this.node.destroy();
+            }
         }
+        //最后将得到的位置传给子弹节点
+        //移动位置超出，就销毁这个节点
+    }
+
+    public show(speed: number, isEnemyBullet: boolean) {
+        this._bulletspeed = speed;
+        this._isEnemyBullet = isEnemyBullet;
     }
 }
 

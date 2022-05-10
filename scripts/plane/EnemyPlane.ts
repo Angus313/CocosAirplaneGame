@@ -1,5 +1,6 @@
 
 import { _decorator, Component, Node } from 'cc';
+import { GameManager } from '../framework/GameManager';
 const { ccclass, property } = _decorator;
 
 /**
@@ -19,8 +20,15 @@ const OUTOFBOUNCE = 50;
 
 @ccclass('EnemyPlane')
 export class EnemyPlane extends Component {
+    @property
+    public createBulletTime = 0.5;
     //敌机的移动速度，由gameManager来配置其值
     private _enemySpeed = 0;
+    //知道当前飞机是否需要发射子弹
+    private _needBullet = false;
+    private _gameManager: GameManager = null;
+
+    private _currCreateBulletTime = 0;
 
     start() {
         // [3]
@@ -33,15 +41,31 @@ export class EnemyPlane extends Component {
         const movePos = pos.z + this._enemySpeed;
         this.node.setPosition(pos.x, pos.y, movePos);
 
+        //如果需要发射子弹，再根据周期去执行发射子弹的逻辑
+        if (this._needBullet) {
+            this._currCreateBulletTime += deltaTime;
+            if (this._currCreateBulletTime > this.createBulletTime) {
+                //子弹需要知道当前的位置，所以需要传一个位置的参数
+                this._gameManager.createEnemyBullet(this.node.position);
+                this._currCreateBulletTime = 0;
+                //子弹发射逻辑在gamemanager里
+            }
+        }
+
         //敌机大概飞到超过z轴50的位置就应该被销毁了
         if (movePos > OUTOFBOUNCE) {
             this.node.destroy();
         }
+
     }
 
+    //敌机可能产生或不产生子弹，产生子弹也会有发射周期
+
     //写这个方法，是通过统一的接口，帮我把想要的配置都传进来
-    public show(speed: number) {
+    public show(gameManager: GameManager, speed: number, needBullet: boolean) {
+        this._gameManager = gameManager;
         this._enemySpeed = speed;
+        this._needBullet = needBullet;
     }
 }
 
