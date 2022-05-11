@@ -1,5 +1,5 @@
 
-import { _decorator, Component, Node, Prefab, instantiate, math, Vec3 } from 'cc';
+import { _decorator, Component, Node, Prefab, instantiate, math, Vec3, Collider } from 'cc';
 import { Bullet } from '../bullet/Bullet';
 import { EnemyPlane } from '../plane/EnemyPlane';
 import { Constant } from './Constant';
@@ -117,6 +117,9 @@ export class GameManager extends Component {
         }
     }
 
+    public addScore() {
+
+    }
 
 
     //创建子弹
@@ -134,6 +137,7 @@ export class GameManager extends Component {
         bulletcomp.show(this.bulletSpeed, false);
     }
 
+    //所有的子弹默认都是玩家分组，所以要在这里重新给敌机子弹设置分组
     public createEnemyBullet(targetPos: Vec3) {
         //实例化子弹，步骤和创建玩家子弹一样
         const bullet = instantiate(this.bullet01);
@@ -142,6 +146,12 @@ export class GameManager extends Component {
         bullet.setPosition(targetPos.x, targetPos.y, targetPos.z + 6);
         const bulletcomp = bullet.getComponent(Bullet);
         bulletcomp.show(1, true);//子弹的速度只要比两种敌机的飞行速度快即可
+
+        const bulletCollider = bullet.getComponent(Collider);
+        //设置分组
+        bulletCollider.setGroup(Constant.CollisionType.ENEMY_BULLET);
+        //设置掩码，因为要碰撞玩家飞机
+        bulletCollider.setMask(Constant.CollisionType.SELF_PLANE);
     }
 
     //敌机的创建

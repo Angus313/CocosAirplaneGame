@@ -1,5 +1,6 @@
 
-import { _decorator, Component, Node } from 'cc';
+import { _decorator, Component, Node, ITriggerEvent, Collider } from 'cc';
+import { Constant } from '../framework/Constant';
 import { GameManager } from '../framework/GameManager';
 const { ccclass, property } = _decorator;
 
@@ -30,8 +31,16 @@ export class EnemyPlane extends Component {
 
     private _currCreateBulletTime = 0;
 
-    start() {
-        // [3]
+    onEnable() {
+        //首先获取碰撞组件
+        const collider = this.getComponent(Collider);
+        //监听触发事件
+        collider.on("onTriggerEnter", this._onTriggerEnter, this);
+    }
+
+    onDisable() {
+        const collider = this.getComponent(Collider);
+        collider.off("onTriggerEnter", this._onTriggerEnter, this);
     }
 
     update(deltaTime: number) {
@@ -60,12 +69,22 @@ export class EnemyPlane extends Component {
     }
 
     //敌机可能产生或不产生子弹，产生子弹也会有发射周期
-
     //写这个方法，是通过统一的接口，帮我把想要的配置都传进来
     public show(gameManager: GameManager, speed: number, needBullet: boolean) {
         this._gameManager = gameManager;
         this._enemySpeed = speed;
         this._needBullet = needBullet;
+    }
+
+    private _onTriggerEnter(event: ITriggerEvent) {
+        //如果获取了另一个碰撞器，是可以知道它的碰撞分组的，这里获取一下分组
+        const collisionGroup = event.otherCollider.getGroup();
+        //如果分组是玩家飞机或玩家子弹
+        if (collisionGroup === Constant.CollisionType.SELF_PLANE || collisionGroup === Constant.CollisionType.SELF_BULLET) {
+            console.log("EnemyPlane TriggerEnter");
+            this.node.destroy();
+            this._gameManager.addScore();
+        }
     }
 }
 
